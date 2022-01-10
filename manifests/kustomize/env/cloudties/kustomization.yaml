@@ -6,7 +6,7 @@ bases:
   - ../../base/metadata/base
   - ../../third-party/argo/installs/namespace
   - ../../third-party/cloudties/minio
-  - ../../third-party/mysql/base
+  - ../../third-party/cloudties/mysql
 
 # Identifier for application manager to apply ownerReference.
 # The ownerReference ensures the resources get garbage collected
