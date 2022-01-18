@@ -1,8 +1,49 @@
+## Installation
 
-# minikube 
-version: v1.20.0
-commit: c61663e942ec43b20e8e70839dcca52e44cd85ae
+# setting up minikube
 
-# kubectl
-Client Version: version.Info{Major:"1", Minor:"23", GitVersion:"v1.23.1", GitCommit:"86ec240af8cbd1b60bcc4c03c20da9b98005b92e", GitTreeState:"clean", BuildDate:"2021-12-16T11:41:01Z", GoVersion:"go1.17.5", Compiler:"gc", Platform:"linux/amd64"}
-Server Version: version.Info{Major:"1", Minor:"20", GitVersion:"v1.20.2", GitCommit:"faecb196815e248d3ecfb03c680a4507229c2a56", GitTreeState:"clean", BuildDate:"2021-01-13T13:20:00Z", GoVersion:"go1.15.5", Compiler:"gc", Platform:"linux/amd64"}
+#!/usr/bin/env bash
+
+# run as root
+
+apt-get update
+apt-get install -y conntrack socat selinux-utils ebtables ethtool
+apt-get install curl
+
+# turn off swap
+swapoff -a
+
+KUBECTL_VERSION=v1.20.2
+MINIKUBE_VERSION=v1.20.0
+
+# get kubectl
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl
+chmod +x ./kubectl
+mv ./kubectl /usr/local/bin/kubectl
+
+# get minikube
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/$MINIKUBE_VERSION/minikube-linux-amd64
+chmod +x minikube
+mv minikube /usr/local/bin/
+
+# start minikube
+minikube start \
+--vm-driver=virtualbox \
+--kubernetes-version=$KUBECTL_VERSION \
+--extra-config=controller-manager.node-cidr-mask-size=16 \
+--extra-config=controller-manager.allocate-node-cidrs=true \
+--extra-config=controller-manager.cluster-cidr=10.244.0.0/16 \
+--extra-config=apiserver.authorization-mode=Node,RBAC \
+--extra-config=apiserver.service-account-signing-key-file=/var/lib/minikube/certs/sa.key \
+--extra-config=apiserver.service-account-issuer=kubernetes.default.svc \
+--extra-config=kubeadm.ignore-preflight-errors=SystemVerification \
+--extra-config=kubeadm.pod-network-cidr=10.244.0.0/16 \
+--extra-config=kubelet.resolv-conf=/run/systemd/resolve/resolv.conf
+
+# Install Kubeflow
+
+git clone https://github.com/9rince/kfp.git
+
+cd kfp/manifest/kustomize/env/cloudties
+
+kustomize build .|kubectl apply -f -
