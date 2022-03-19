@@ -17,13 +17,13 @@ KUBECTL_VERSION=v1.20.2
 MINIKUBE_VERSION=v1.20.0
 
 # get kubectl
-curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl
-chmod +x ./kubectl
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl \
+chmod +x ./kubectl \
 mv ./kubectl /usr/local/bin/kubectl
 
 # get minikube
-curl -Lo minikube https://storage.googleapis.com/minikube/releases/$MINIKUBE_VERSION/minikube-linux-amd64
-chmod +x minikube
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/$MINIKUBE_VERSION/minikube-linux-amd64 \
+chmod +x minikube \
 mv minikube /usr/local/bin/
 
 # start minikube
