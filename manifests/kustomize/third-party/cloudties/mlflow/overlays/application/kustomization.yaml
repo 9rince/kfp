@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+bases:
+- ../../base
+commonLabels:
+  app.kubernetes.io/component: mlflow
+  app.kubernetes.io/instance: mlflow-1.8
+  app.kubernetes.io/managed-by: kfctl
+  app.kubernetes.io/name: mlflow
+  app.kubernetes.io/part-of: kubeflow
+  app.kubernetes.io/version: 1.8
+kind: Kustomization
+resources:
+- application.yaml
