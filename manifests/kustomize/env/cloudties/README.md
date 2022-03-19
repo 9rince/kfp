@@ -6,8 +6,8 @@
 
 # run as root
 
-apt-get update
-apt-get install -y conntrack socat selinux-utils ebtables ethtool
+apt-get update \
+apt-get install -y conntrack socat selinux-utils ebtables ethtool \
 apt-get install curl
 
 # turn off swap
