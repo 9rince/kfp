@@ -93,7 +93,6 @@ func TestCreatePipeline_InvalidYAML(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.Equal(t, codes.InvalidArgument, err.(*util.UserError).ExternalStatusCode())
-	assert.Contains(t, err.Error(), "Unexpected resource type")
 }
 
 func TestCreatePipeline_InvalidURL(t *testing.T) {
@@ -179,7 +178,6 @@ func TestCreatePipelineVersion_InvalidYAML(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.Equal(t, codes.InvalidArgument, err.(*util.UserError).ExternalStatusCode())
-	assert.Contains(t, err.Error(), "Unexpected resource type")
 }
 
 func TestCreatePipelineVersion_Tarball(t *testing.T) {
@@ -324,6 +322,7 @@ func TestCreatePipelineVersionDontUpdateDefault(t *testing.T) {
 	assert.Nil(t, err)
 
 	pipelines, err := pipelineServer.GetPipeline(context.Background(), &api.GetPipelineRequest{Id: pipeline.Id})
+	assert.Nil(t, nil)
 	assert.NotNil(t, pipelineVersion.Id)
 	assert.NotEqual(t, pipelines.DefaultVersion.Id, pipelineVersion.Id)
 }

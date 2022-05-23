@@ -11,4 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Module for supporting Google Vertex AI Custom Job."""
+"""Module for supporting Google Vertex AI Custom Training Job Op."""
+
+import os
+
+try:
+  from kfp.v2.components import load_component_from_file
+except ImportError:
+  from kfp.components import load_component_from_file
+
+__all__ = [
+    'CustomTrainingJobOp',
+]
+
+
+CustomTrainingJobOp = load_component_from_file(
+    os.path.join(os.path.dirname(__file__), 'component.yaml'))
+

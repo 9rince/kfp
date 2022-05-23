@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
 import inspect
+import json
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from kfp.v2.components.types import artifact_types, type_annotations
@@ -22,7 +22,11 @@ class Executor():
     """Executor executes v2-based Python function components."""
 
     def __init__(self, executor_input: Dict, function_to_execute: Callable):
-        self._func = function_to_execute
+        if hasattr(function_to_execute, 'python_func'):
+            self._func = function_to_execute.python_func
+        else:
+            self._func = function_to_execute
+
         self._input = executor_input
         self._input_artifacts: Dict[str, artifact_types.Artifact] = {}
         self._output_artifacts: Dict[str, artifact_types.Artifact] = {}
@@ -64,25 +68,13 @@ class Executor():
 
     def _get_input_parameter_value(self, parameter_name: str,
                                    parameter_type: Any):
-        parameter = self._input.get('inputs',
-                                    {}).get('parameters',
-                                            {}).get(parameter_name, None)
-        if parameter is None:
-            return None
+        parameter_values = self._input.get('inputs',
+                                           {}).get('parameterValues', None)
 
-        if parameter.get('stringValue'):
-            if parameter_type == str:
-                return parameter['stringValue']
-            elif parameter_type == bool:
-                # Use `.lower()` so it can also handle 'True' and 'False' (resulted from
-                # `str(True)` and `str(False)`, respectively.
-                return json.loads(parameter['stringValue'].lower())
-            else:
-                return json.loads(parameter['stringValue'])
-        elif parameter.get('intValue'):
-            return int(parameter['intValue'])
-        elif parameter.get('doubleValue'):
-            return float(parameter['doubleValue'])
+        if parameter_values is not None:
+            return parameter_values.get(parameter_name, None)
+
+        return None
 
     def _get_output_parameter_path(self, parameter_name: str):
         parameter = self._input.get('outputs',
@@ -101,8 +93,8 @@ class Executor():
         output_artifact = self._output_artifacts.get(artifact_name)
         if not output_artifact:
             raise ValueError(
-                'Failed to get output artifact path for artifact name {}'.
-                format(artifact_name))
+                'Failed to get output artifact path for artifact name {}'
+                .format(artifact_name))
         return output_artifact.path
 
     def _get_input_artifact_path(self, artifact_name: str):
@@ -116,20 +108,22 @@ class Executor():
     def _write_output_parameter_value(self, name: str,
                                       value: Union[str, int, float, bool, dict,
                                                    list, Dict, List]):
-        if type(value) == str:
-            output = {'stringValue': value}
-        elif type(value) == int:
-            output = {'intValue': value}
-        elif type(value) == float:
-            output = {'doubleValue': value}
+        if isinstance(value, (float, int)):
+            output = str(value)
+        elif isinstance(value, str):
+            # value is already a string.
+            output = value
+        elif isinstance(value, (bool, list, dict)):
+            output = json.dumps(value)
         else:
-            # For bool, list, dict, List, Dict, json serialize the value.
-            output = {'stringValue': json.dumps(value)}
+            raise ValueError(
+                'Unable to serialize unknown type `{}` for parameter'
+                ' input with value `{}`'.format(value, type(value)))
 
-        if not self._executor_output.get('parameters'):
-            self._executor_output['parameters'] = {}
+        if not self._executor_output.get('parameterValues'):
+            self._executor_output['parameterValues'] = {}
 
-        self._executor_output['parameters'][name] = output
+        self._executor_output['parameterValues'][name] = value
 
     def _write_output_artifact_payload(self, name: str, value: Any):
         path = self._get_output_artifact_path(name)
@@ -141,21 +135,21 @@ class Executor():
     def _get_short_type_name(cls, type_name: str) -> str:
         """Extracts the short form type name.
 
-    This method is used for looking up serializer for a given type.
+        This method is used for looking up serializer for a given type.
 
-    For example:
-      typing.List -> List
-      typing.List[int] -> List
-      typing.Dict[str, str] -> Dict
-      List -> List
-      str -> str
+        For example:
+          typing.List -> List
+          typing.List[int] -> List
+          typing.Dict[str, str] -> Dict
+          List -> List
+          str -> str
 
-    Args:
-      type_name: The original type name.
+        Args:
+          type_name: The original type name.
 
-    Returns:
-      The short form type name or the original name if pattern doesn't match.
-    """
+        Returns:
+          The short form type name or the original name if pattern doesn't match.
+        """
         import re
         match = re.match('(typing\.)?(?P<type>\w+)(?:\[.+\])?', type_name)
         if match:
@@ -189,11 +183,13 @@ class Executor():
     def _handle_single_return_value(self, output_name: str,
                                     annotation_type: Any, return_value: Any):
         if self._is_parameter(annotation_type):
-            if type(return_value) != annotation_type:
+            origin_type = getattr(annotation_type, '__origin__',
+                                  None) or annotation_type
+            if not isinstance(return_value, origin_type):
                 raise ValueError(
-                    'Function `{}` returned value of type {}; want type {}'.
-                    format(self._func.__name__, type(return_value),
-                           annotation_type))
+                    'Function `{}` returned value of type {}; want type {}'
+                    .format(self._func.__name__, type(return_value),
+                            origin_type))
             self._write_output_parameter_value(output_name, return_value)
         elif self._is_artifact(annotation_type):
             self._write_output_artifact_payload(output_name, return_value)
@@ -226,9 +222,10 @@ class Executor():
             elif self._is_named_tuple(self._return_annotation):
                 if len(self._return_annotation._fields) != len(func_output):
                     raise RuntimeError(
-                        'Expected {} return values from function `{}`, got {}'.
-                        format(len(self._return_annotation._fields),
-                               self._func.__name__, len(func_output)))
+                        'Expected {} return values from function `{}`, got {}'
+                        .format(
+                            len(self._return_annotation._fields),
+                            self._func.__name__, len(func_output)))
                 for i in range(len(self._return_annotation._fields)):
                     field = self._return_annotation._fields[i]
                     field_type = self._return_annotation.__annotations__[field]
@@ -245,8 +242,9 @@ class Executor():
                     .format(self._return_annotation))
 
         import os
-        os.makedirs(os.path.dirname(self._input['outputs']['outputFile']),
-                    exist_ok=True)
+        os.makedirs(
+            os.path.dirname(self._input['outputs']['outputFile']),
+            exist_ok=True)
         with open(self._input['outputs']['outputFile'], 'w') as f:
             f.write(json.dumps(self._executor_output))
 
@@ -260,8 +258,15 @@ class Executor():
             if k == 'return':
                 continue
 
+            # Annotations for parameter types could be written as, for example,
+            # `Optional[str]`. In this case, we need to strip off the part
+            # `Optional[]` to get the actual parameter type.
+            v = type_annotations.maybe_strip_optional_from_annotation(v)
+
             if self._is_parameter(v):
-                func_kwargs[k] = self._get_input_parameter_value(k, v)
+                value = self._get_input_parameter_value(k, v)
+                if value is not None:
+                    func_kwargs[k] = value
 
             if type_annotations.is_artifact_annotation(v):
                 if type_annotations.is_input_artifact(v):

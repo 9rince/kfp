@@ -13,8 +13,13 @@
 # limitations under the License.
 """Core modules for AI Platform Pipeline Components."""
 
+import os
 from google.cloud import aiplatform as aiplatform_sdk
 from google_cloud_pipeline_components.aiplatform import utils
+try:
+  from kfp.v2.components import load_component_from_file
+except ImportError:
+  from kfp.components import load_component_from_file
 
 __all__ = [
     'ImageDatasetCreateOp',
@@ -36,6 +41,7 @@ __all__ = [
     'AutoMLVideoTrainingJobRunOp',
     'ModelDeployOp',
     'ModelBatchPredictOp',
+    'ModelExportOp',
     'ModelUploadOp',
     'EndpointCreateOp',
     'TimeSeriesDatasetCreateOp',
@@ -44,24 +50,19 @@ __all__ = [
 ]
 
 TimeSeriesDatasetCreateOp = utils.convert_method_to_component(
-    aiplatform_sdk.TimeSeriesDataset, aiplatform_sdk.TimeSeriesDataset.create
-)
+    aiplatform_sdk.TimeSeriesDataset, aiplatform_sdk.TimeSeriesDataset.create)
 
 ImageDatasetCreateOp = utils.convert_method_to_component(
-    aiplatform_sdk.ImageDataset, aiplatform_sdk.ImageDataset.create
-)
+    aiplatform_sdk.ImageDataset, aiplatform_sdk.ImageDataset.create)
 
 TabularDatasetCreateOp = utils.convert_method_to_component(
-    aiplatform_sdk.TabularDataset, aiplatform_sdk.TabularDataset.create
-)
+    aiplatform_sdk.TabularDataset, aiplatform_sdk.TabularDataset.create)
 
 TextDatasetCreateOp = utils.convert_method_to_component(
-    aiplatform_sdk.TextDataset, aiplatform_sdk.TextDataset.create
-)
+    aiplatform_sdk.TextDataset, aiplatform_sdk.TextDataset.create)
 
 VideoDatasetCreateOp = utils.convert_method_to_component(
-    aiplatform_sdk.VideoDataset, aiplatform_sdk.VideoDataset.create
-)
+    aiplatform_sdk.VideoDataset, aiplatform_sdk.VideoDataset.create)
 
 ImageDatasetExportDataOp = utils.convert_method_to_component(
     aiplatform_sdk.ImageDataset,
@@ -138,24 +139,21 @@ AutoMLVideoTrainingJobRunOp = utils.convert_method_to_component(
     aiplatform_sdk.AutoMLVideoTrainingJob.run,
 )
 
-ModelDeployOp = utils.convert_method_to_component(
-    aiplatform_sdk.Model,
-    aiplatform_sdk.Model.deploy,
-)
+ModelExportOp = load_component_from_file(
+    os.path.join(
+        os.path.dirname(__file__), 'model/export_model/component.yaml'))
 
-ModelBatchPredictOp = utils.convert_method_to_component(
-    aiplatform_sdk.Model,
-    aiplatform_sdk.Model.batch_predict,
-)
+ModelDeployOp = load_component_from_file(
+    os.path.join(
+        os.path.dirname(__file__), 'endpoint/deploy_model/component.yaml'))
 
-ModelUploadOp = utils.convert_method_to_component(
-    aiplatform_sdk.Model, aiplatform_sdk.Model.upload
-)
+ModelBatchPredictOp = load_component_from_file(
+    os.path.join(os.path.dirname(__file__), 'batch_predict_job/component.yaml'))
 
-ModelExportOp = utils.convert_method_to_component(
-    aiplatform_sdk.Model, aiplatform_sdk.Model.export_model
-)
+ModelUploadOp = load_component_from_file(
+    os.path.join(
+        os.path.dirname(__file__), 'model/upload_model/component.yaml'))
 
-EndpointCreateOp = utils.convert_method_to_component(
-    aiplatform_sdk.Endpoint, aiplatform_sdk.Endpoint.create
-)
+EndpointCreateOp = load_component_from_file(
+    os.path.join(
+        os.path.dirname(__file__), 'endpoint/create_endpoint/component.yaml'))

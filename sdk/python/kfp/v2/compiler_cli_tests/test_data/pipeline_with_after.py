@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from kfp import components
+from kfp.v2 import components
 from kfp.v2 import dsl
-import kfp.v2.compiler as compiler
+from kfp.v2 import compiler
 
 component_op = components.load_component_from_text("""
 name: Print Text
@@ -35,12 +35,12 @@ implementation:
 
 @dsl.pipeline(name='pipeline-with-after', pipeline_root='dummy_root')
 def my_pipeline():
-  task1 = component_op(text='1st task')
-  task2 = component_op(text='2nd task').after(task1)
-  task3 = component_op(text='3rd task').after(task1, task2)
+    task1 = component_op(text='1st task')
+    task2 = component_op(text='2nd task').after(task1)
+    task3 = component_op(text='3rd task').after(task1, task2)
 
 
 if __name__ == '__main__':
-  compiler.Compiler().compile(
-      pipeline_func=my_pipeline,
-      package_path=__file__.replace('.py', '.json'))
+    compiler.Compiler().compile(
+        pipeline_func=my_pipeline,
+        package_path=__file__.replace('.py', '.json'))

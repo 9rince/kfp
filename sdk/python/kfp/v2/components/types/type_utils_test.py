@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl.testing import parameterized
-
 import sys
 import unittest
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
+from absl.testing import parameterized
 from kfp.components import structures
 from kfp.pipeline_spec import pipeline_spec_pb2 as pb
 from kfp.v2.components.types import artifact_types, type_utils
+from kfp.v2.components.types.type_utils import InconsistentTypeException
 
 _PARAMETER_TYPES = [
     'String',
@@ -49,6 +49,14 @@ class _ArbitraryClass:
     pass
 
 
+class _VertexDummy(artifact_types.Artifact):
+    TYPE_NAME = 'google.VertexDummy'
+    VERSION = '0.0.2'
+
+    def __init__(self):
+        super().__init__(uri='uri', name='name', metadata={'dummy': '123'})
+
+
 class TypeUtilsTest(parameterized.TestCase):
 
     def test_is_parameter_type(self):
@@ -62,43 +70,43 @@ class TypeUtilsTest(parameterized.TestCase):
             'artifact_class_or_type_name':
                 'Model',
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Model',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Model', schema_version='0.0.1')
         },
         {
             'artifact_class_or_type_name':
                 artifact_types.Model,
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Model',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Model', schema_version='0.0.1')
         },
         {
             'artifact_class_or_type_name':
                 'Dataset',
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Dataset',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Dataset', schema_version='0.0.1')
         },
         {
             'artifact_class_or_type_name':
                 artifact_types.Dataset,
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Dataset',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Dataset', schema_version='0.0.1')
         },
         {
             'artifact_class_or_type_name':
                 'Metrics',
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Metrics',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Metrics', schema_version='0.0.1')
         },
         {
             'artifact_class_or_type_name':
                 artifact_types.Metrics,
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Metrics',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Metrics', schema_version='0.0.1')
         },
         {
             'artifact_class_or_type_name':
@@ -136,27 +144,50 @@ class TypeUtilsTest(parameterized.TestCase):
             'artifact_class_or_type_name':
                 'arbitrary name',
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Artifact',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Artifact', schema_version='0.0.1')
         },
         {
             'artifact_class_or_type_name':
                 _ArbitraryClass,
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Artifact',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Artifact', schema_version='0.0.1')
         },
         {
-            'artifact_class_or_type_name': artifact_types.HTML,
-            'expected_result': pb.ArtifactTypeSchema(schema_title='system.HTML',
-            schema_version='0.0.1')
+            'artifact_class_or_type_name':
+                artifact_types.HTML,
+            'expected_result':
+                pb.ArtifactTypeSchema(
+                    schema_title='system.HTML', schema_version='0.0.1')
         },
         {
             'artifact_class_or_type_name':
                 artifact_types.Markdown,
             'expected_result':
-                pb.ArtifactTypeSchema(schema_title='system.Markdown',
-                schema_version='0.0.1')
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Markdown', schema_version='0.0.1')
+        },
+        {
+            'artifact_class_or_type_name':
+                'some-google-type',
+            'expected_result':
+                pb.ArtifactTypeSchema(
+                    schema_title='system.Artifact', schema_version='0.0.1')
+        },
+        {
+            'artifact_class_or_type_name':
+                'google.VertexModel',
+            'expected_result':
+                pb.ArtifactTypeSchema(
+                    schema_title='google.VertexModel', schema_version='0.0.1')
+        },
+        {
+            'artifact_class_or_type_name':
+                _VertexDummy,
+            'expected_result':
+                pb.ArtifactTypeSchema(
+                    schema_title='google.VertexDummy', schema_version='0.0.2')
         },
     )
     def test_get_artifact_type_schema(self, artifact_class_or_type_name,
@@ -168,71 +199,71 @@ class TypeUtilsTest(parameterized.TestCase):
     @parameterized.parameters(
         {
             'given_type': 'Int',
-            'expected_type': pb.PrimitiveType.INT,
+            'expected_type': pb.ParameterType.NUMBER_INTEGER,
         },
         {
             'given_type': 'Integer',
-            'expected_type': pb.PrimitiveType.INT,
+            'expected_type': pb.ParameterType.NUMBER_INTEGER,
         },
         {
             'given_type': int,
-            'expected_type': pb.PrimitiveType.INT,
+            'expected_type': pb.ParameterType.NUMBER_INTEGER,
         },
         {
             'given_type': 'Double',
-            'expected_type': pb.PrimitiveType.DOUBLE,
+            'expected_type': pb.ParameterType.NUMBER_DOUBLE,
         },
         {
             'given_type': 'Float',
-            'expected_type': pb.PrimitiveType.DOUBLE,
+            'expected_type': pb.ParameterType.NUMBER_DOUBLE,
         },
         {
             'given_type': float,
-            'expected_type': pb.PrimitiveType.DOUBLE,
+            'expected_type': pb.ParameterType.NUMBER_DOUBLE,
         },
         {
             'given_type': 'String',
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.STRING,
         },
         {
             'given_type': 'Text',
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.STRING,
         },
         {
             'given_type': str,
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.STRING,
         },
         {
             'given_type': 'Boolean',
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.BOOLEAN,
         },
         {
             'given_type': bool,
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.BOOLEAN,
         },
         {
             'given_type': 'Dict',
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.STRUCT,
         },
         {
             'given_type': dict,
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.STRUCT,
         },
         {
             'given_type': 'List',
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.LIST,
         },
         {
             'given_type': list,
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.LIST,
         },
         {
             'given_type': Dict[str, int],
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.STRUCT,
         },
         {
             'given_type': List[Any],
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.LIST,
         },
         {
             'given_type': {
@@ -240,7 +271,7 @@ class TypeUtilsTest(parameterized.TestCase):
                     'data_type': 'proto:tfx.components.trainer.TrainArgs'
                 }
             },
-            'expected_type': pb.PrimitiveType.STRING,
+            'expected_type': pb.ParameterType.STRUCT,
         },
     )
     def test_get_parameter_type(self, given_type, expected_type):
@@ -248,7 +279,7 @@ class TypeUtilsTest(parameterized.TestCase):
                          type_utils.get_parameter_type(given_type))
 
         # Test get parameter by Python type.
-        self.assertEqual(pb.PrimitiveType.INT,
+        self.assertEqual(pb.ParameterType.NUMBER_INTEGER,
                          type_utils.get_parameter_type(int))
 
     def test_get_parameter_type_invalid(self):
@@ -283,13 +314,113 @@ class TypeUtilsTest(parameterized.TestCase):
             type_utils.get_input_artifact_type_schema('input3',
                                                       input_specs).schema_title)
 
-    def test_get_parameter_type_field_name(self):
-        self.assertEqual('string_value',
-                         type_utils.get_parameter_type_field_name('String'))
-        self.assertEqual('int_value',
-                         type_utils.get_parameter_type_field_name('Integer'))
-        self.assertEqual('double_value',
-                         type_utils.get_parameter_type_field_name('Float'))
+    @parameterized.parameters(
+        {
+            'given_type': 'String',
+            'expected_type': 'String',
+            'is_compatible': True,
+        },
+        {
+            'given_type': 'String',
+            'expected_type': 'Integer',
+            'is_compatible': False,
+        },
+        {
+            'given_type': {
+                'type_a': {
+                    'property': 'property_b',
+                }
+            },
+            'expected_type': {
+                'type_a': {
+                    'property': 'property_b',
+                }
+            },
+            'is_compatible': True,
+        },
+        {
+            'given_type': {
+                'type_a': {
+                    'property': 'property_b',
+                }
+            },
+            'expected_type': {
+                'type_a': {
+                    'property': 'property_c',
+                }
+            },
+            'is_compatible': False,
+        },
+        {
+            'given_type': 'Artifact',
+            'expected_type': 'Model',
+            'is_compatible': True,
+        },
+        {
+            'given_type': 'Metrics',
+            'expected_type': 'Artifact',
+            'is_compatible': True,
+        },
+    )
+    def test_verify_type_compatibility(
+        self,
+        given_type: Union[str, dict],
+        expected_type: Union[str, dict],
+        is_compatible: bool,
+    ):
+        if is_compatible:
+            self.assertTrue(
+                type_utils.verify_type_compatibility(
+                    given_type=given_type,
+                    expected_type=expected_type,
+                    error_message_prefix='',
+                ))
+        else:
+            with self.assertRaises(InconsistentTypeException):
+                type_utils.verify_type_compatibility(
+                    given_type=given_type,
+                    expected_type=expected_type,
+                    error_message_prefix='',
+                )
+
+    @parameterized.parameters(
+        {
+            'given_type': str,
+            'expected_type_name': 'String',
+        },
+        {
+            'given_type': int,
+            'expected_type_name': 'Integer',
+        },
+        {
+            'given_type': float,
+            'expected_type_name': 'Float',
+        },
+        {
+            'given_type': bool,
+            'expected_type_name': 'Boolean',
+        },
+        {
+            'given_type': list,
+            'expected_type_name': 'List',
+        },
+        {
+            'given_type': dict,
+            'expected_type_name': 'Dict',
+        },
+        {
+            'given_type': Any,
+            'expected_type_name': None,
+        },
+    )
+    def test_get_canonical_type_name_for_type(
+        self,
+        given_type,
+        expected_type_name,
+    ):
+        self.assertEqual(
+            expected_type_name,
+            type_utils.get_canonical_type_name_for_type(given_type))
 
 
 if __name__ == '__main__':

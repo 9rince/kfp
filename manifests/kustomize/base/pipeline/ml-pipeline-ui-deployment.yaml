@@ -20,7 +20,7 @@ spec:
         configMap:
           name: ml-pipeline-ui-configmap
       containers:
-      - image: princ3/kubeflow:frontend
+      - image: gcr.io/ml-pipeline/frontend:dummy
         imagePullPolicy: IfNotPresent
         name: ml-pipeline-ui
         ports:

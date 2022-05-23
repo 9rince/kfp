@@ -11,26 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for kfp.components.executor"""
+"""Tests for kfp.components.executor."""
 
+import json
 import os
 import tempfile
-from typing import Callable, NamedTuple, Optional
 import unittest
-import json
+from typing import Callable, Dict, List, NamedTuple, Optional
 
 from kfp.v2.components import executor
 from kfp.v2.components.types import artifact_types
-from kfp.v2.components.types.artifact_types import Artifact, Dataset, Model, Metrics
-from kfp.v2.components.types.type_annotations import Input, Output, InputPath, OutputPath
+from kfp.v2.components.types.artifact_types import (Artifact, Dataset, Metrics,
+                                                    Model)
+from kfp.v2.components.types.type_annotations import (Input, InputPath, Output,
+                                                      OutputPath)
 
 _EXECUTOR_INPUT = """\
 {
   "inputs": {
-    "parameters": {
-      "input_parameter": {
-        "stringValue": "Hello, KFP"
-      }
+    "parameterValues": {
+      "input_parameter": "Hello, KFP"
     },
     "artifacts": {
       "input_artifact_one_path": {
@@ -104,8 +104,8 @@ class ExecutorTest(unittest.TestCase):
 
         executor_input_dict = json.loads(executor_input % self._test_dir)
 
-        return executor.Executor(executor_input=executor_input_dict,
-                                 function_to_execute=func)
+        return executor.Executor(
+            executor_input=executor_input_dict, function_to_execute=func)
 
     def test_input_parameter(self):
 
@@ -215,13 +215,10 @@ class ExecutorTest(unittest.TestCase):
         executor_input = """\
     {
       "inputs": {
-        "parameters": {
-          "first_message": {
-            "stringValue": "Hello"
-          },
-          "second_message": {
-            "stringValue": "World"
-          }
+        "parameterValues": {
+          "first_message": "Hello",
+          "second_message": "",
+          "third_message": "World"
         }
       },
       "outputs": {
@@ -235,18 +232,20 @@ class ExecutorTest(unittest.TestCase):
     }
     """
 
-        def test_func(first_message: str, second_message: str) -> str:
-            return first_message + ", " + second_message
+        def test_func(
+            first_message: str,
+            second_message: str,
+            third_message: str,
+        ) -> str:
+            return first_message + ", " + second_message + ", " + third_message
 
         self._get_executor(test_func, executor_input).execute()
         with open(os.path.join(self._test_dir, 'output_metadata.json'),
                   'r') as f:
             output_metadata = json.loads(f.read())
         self.assertDictEqual(output_metadata, {
-            "parameters": {
-                "Output": {
-                    "stringValue": "Hello, World"
-                }
+            "parameterValues": {
+                "Output": "Hello, , World"
             },
         })
 
@@ -254,13 +253,9 @@ class ExecutorTest(unittest.TestCase):
         executor_input = """\
     {
       "inputs": {
-        "parameters": {
-          "first": {
-            "intValue": 40
-          },
-          "second": {
-            "intValue": 2
-          }
+        "parameterValues": {
+          "first": 40,
+          "second": 2
         }
       },
       "outputs": {
@@ -282,29 +277,23 @@ class ExecutorTest(unittest.TestCase):
                   'r') as f:
             output_metadata = json.loads(f.read())
         self.assertDictEqual(output_metadata, {
-            "parameters": {
-                "Output": {
-                    "intValue": 42
-                }
+            "parameterValues": {
+                "Output": 42
             },
         })
 
-    def test_function_with_int_output(self):
+    def test_function_with_float_output(self):
         executor_input = """\
     {
       "inputs": {
-        "parameters": {
-          "first_message": {
-            "stringValue": "Hello"
-          },
-          "second_message": {
-            "stringValue": "World"
-          }
+        "parameterValues": {
+          "first": 0.0,
+          "second": 1.2
         }
       },
       "outputs": {
-        "artifacts": {
-          "Output": {
+        "parameters": {
+          "output": {
             "outputFile": "gs://some-bucket/output"
           }
         },
@@ -313,17 +302,153 @@ class ExecutorTest(unittest.TestCase):
     }
     """
 
-        def test_func(first_message: str, second_message: str) -> str:
-            return first_message + ", " + second_message
+        def test_func(first: float, second: float) -> float:
+            return first + second
 
         self._get_executor(test_func, executor_input).execute()
         with open(os.path.join(self._test_dir, 'output_metadata.json'),
                   'r') as f:
             output_metadata = json.loads(f.read())
         self.assertDictEqual(output_metadata, {
-            "parameters": {
+            "parameterValues": {
+                "Output": 1.2
+            },
+        })
+
+    def test_function_with_list_output(self):
+        executor_input = """\
+    {
+      "inputs": {
+        "parameterValues": {
+          "first": 40,
+          "second": 2
+        }
+      },
+      "outputs": {
+        "parameters": {
+          "output": {
+            "outputFile": "gs://some-bucket/output"
+          }
+        },
+        "outputFile": "%s/output_metadata.json"
+      }
+    }
+    """
+
+        def test_func(first: int, second: int) -> List:
+            return [first, second]
+
+        self._get_executor(test_func, executor_input).execute()
+        with open(os.path.join(self._test_dir, 'output_metadata.json'),
+                  'r') as f:
+            output_metadata = json.loads(f.read())
+        self.assertDictEqual(output_metadata, {
+            "parameterValues": {
+                "Output": [40, 2]
+            },
+        })
+
+    def test_function_with_dict_output(self):
+        executor_input = """\
+    {
+      "inputs": {
+        "parameterValues": {
+          "first": 40,
+          "second": 2
+        }
+      },
+      "outputs": {
+        "parameters": {
+          "output": {
+            "outputFile": "gs://some-bucket/output"
+          }
+        },
+        "outputFile": "%s/output_metadata.json"
+      }
+    }
+    """
+
+        def test_func(first: int, second: int) -> Dict:
+            return {"first": first, "second": second}
+
+        self._get_executor(test_func, executor_input).execute()
+        with open(os.path.join(self._test_dir, 'output_metadata.json'),
+                  'r') as f:
+            output_metadata = json.loads(f.read())
+        self.assertDictEqual(output_metadata, {
+            'parameterValues': {
+                'Output': {
+                    'first': 40,
+                    'second': 2
+                }
+            },
+        })
+
+    def test_function_with_typed_list_output(self):
+        executor_input = """\
+    {
+      "inputs": {
+        "parameterValues": {
+          "first": 40,
+          "second": 2
+        }
+      },
+      "outputs": {
+        "parameters": {
+          "output": {
+            "outputFile": "gs://some-bucket/output"
+          }
+        },
+        "outputFile": "%s/output_metadata.json"
+      }
+    }
+    """
+
+        def test_func(first: int, second: int) -> List[int]:
+            return [first, second]
+
+        self._get_executor(test_func, executor_input).execute()
+        with open(os.path.join(self._test_dir, 'output_metadata.json'),
+                  'r') as f:
+            output_metadata = json.loads(f.read())
+        self.assertDictEqual(output_metadata, {
+            "parameterValues": {
+                "Output": [40, 2]
+            },
+        })
+
+    def test_function_with_typed_dict_output(self):
+        executor_input = """\
+    {
+      "inputs": {
+        "parameterValues": {
+          "first": 40,
+          "second": 2
+        }
+      },
+      "outputs": {
+        "parameters": {
+          "output": {
+            "outputFile": "gs://some-bucket/output"
+          }
+        },
+        "outputFile": "%s/output_metadata.json"
+      }
+    }
+    """
+
+        def test_func(first: int, second: int) -> Dict[str, int]:
+            return {"first": first, "second": second}
+
+        self._get_executor(test_func, executor_input).execute()
+        with open(os.path.join(self._test_dir, 'output_metadata.json'),
+                  'r') as f:
+            output_metadata = json.loads(f.read())
+        self.assertDictEqual(output_metadata, {
+            "parameterValues": {
                 "Output": {
-                    "stringValue": "Hello, World"
+                    "first": 40,
+                    "second": 2
                 }
             },
         })
@@ -332,13 +457,9 @@ class ExecutorTest(unittest.TestCase):
         executor_input = """\
     {
       "inputs": {
-        "parameters": {
-          "first": {
-            "stringValue": "Hello"
-          },
-          "second": {
-            "stringValue": "World"
-          }
+        "parameterValues": {
+          "first":  "Hello",
+          "second": "World"
         }
       },
       "outputs": {
@@ -437,8 +558,9 @@ class ExecutorTest(unittest.TestCase):
                 func_returning_named_tuple, func_returning_plain_tuple
         ]:
             self._get_executor(test_func, executor_input).execute()
-            with open(os.path.join(self._test_dir, 'output_metadata.json'),
-                      'r') as f:
+            with open(
+                    os.path.join(self._test_dir, 'output_metadata.json'),
+                    'r') as f:
                 output_metadata = json.loads(f.read())
             self.assertDictEqual(
                 output_metadata, {
@@ -451,13 +573,9 @@ class ExecutorTest(unittest.TestCase):
                             }]
                         }
                     },
-                    "parameters": {
-                        "output_string": {
-                            "stringValue": "Some output string"
-                        },
-                        "output_int": {
-                            "intValue": 101
-                        }
+                    "parameterValues": {
+                        "output_int": 101,
+                        "output_string": "Some output string"
                     },
                 })
 
@@ -466,3 +584,67 @@ class ExecutorTest(unittest.TestCase):
                     'r') as f:
                 artifact_payload = f.read()
             self.assertEqual(artifact_payload, "Dataset contents")
+
+    def test_function_with_optional_inputs(self):
+        executor_input = """\
+    {
+      "inputs": {
+        "parameterValues": {
+          "first_message": "Hello",
+          "second_message": "World"
+        }
+      },
+      "outputs": {
+        "parameters": {
+          "output": {
+            "outputFile": "gs://some-bucket/output"
+          }
+        },
+        "outputFile": "%s/output_metadata.json"
+      }
+    }
+    """
+
+        def test_func(
+            first_message: str = 'default value',
+            second_message: Optional[str] = None,
+            third_message: Optional[str] = None,
+            forth_argument: str = 'abc',
+            fifth_argument: int = 100,
+            sixth_argument: float = 1.23,
+            seventh_argument: bool = True,
+            eighth_argument: list = [1, 2],
+            ninth_argument: dict = {'a': 1},
+        ) -> str:
+            return (f'{first_message} ({type(first_message)}), '
+                    f'{second_message} ({type(second_message)}), '
+                    f'{third_message} ({type(third_message)}), '
+                    f'{forth_argument} ({type(forth_argument)}), '
+                    f'{fifth_argument} ({type(fifth_argument)}), '
+                    f'{sixth_argument} ({type(sixth_argument)}), '
+                    f'{seventh_argument} ({type(seventh_argument)}), '
+                    f'{eighth_argument} ({type(eighth_argument)}), '
+                    f'{ninth_argument} ({type(ninth_argument)}).')
+
+        self._get_executor(test_func, executor_input).execute()
+        with open(os.path.join(self._test_dir, 'output_metadata.json'),
+                  'r') as f:
+            output_metadata = json.loads(f.read())
+        self.assertDictEqual(
+            output_metadata, {
+                "parameterValues": {
+                    "Output": "Hello (<class 'str'>), "
+                              "World (<class 'str'>), "
+                              "None (<class 'NoneType'>), "
+                              "abc (<class 'str'>), "
+                              "100 (<class 'int'>), "
+                              "1.23 (<class 'float'>), "
+                              "True (<class 'bool'>), "
+                              "[1, 2] (<class 'list'>), "
+                              "{'a': 1} (<class 'dict'>)."
+                },
+            })
+
+
+if __name__ == '__main__':
+    unittest.main()

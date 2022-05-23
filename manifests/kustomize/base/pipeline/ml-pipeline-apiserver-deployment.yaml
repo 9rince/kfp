@@ -73,7 +73,7 @@ spec:
             secretKeyRef:
               name: mlpipeline-minio-artifact
               key: secretkey
-        image: princ3/kubeflow:api-server
+        image: gcr.io/ml-pipeline/api-server:dummy
         imagePullPolicy: IfNotPresent
         name: ml-pipeline-api-server
         ports:

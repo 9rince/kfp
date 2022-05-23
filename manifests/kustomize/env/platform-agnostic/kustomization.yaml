@@ -5,8 +5,15 @@ bases:
   - ../../base/installs/generic
   - ../../base/metadata/base
   - ../../third-party/argo/installs/namespace
-  - ../../third-party/minio/base
-  - ../../third-party/mysql/base
+#  - ../../third-party/minio/base
+#  - ../../third-party/mysql/base
+  - ../../third-party/cloudties/minio
+  - ../../third-party/cloudties/mysql
+  - ../../third-party/cloudties/mlflow/base
+#  - ../../third-party/cloudties/katib/katib-crds/base
+#  - ../../third-party/cloudties/katib/katib-controller/base
+  - ../../third-party/grafana
+  - ../../third-party/prometheus
 
 # Identifier for application manager to apply ownerReference.
 # The ownerReference ensures the resources get garbage collected
