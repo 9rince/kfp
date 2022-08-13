@@ -1,2 +1,0 @@
-kubernetes==19.15.0
-kserve==0.7.0
