@@ -1,0 +1,32 @@
+apiVersion: app.k8s.io/v1beta1
+kind: Application
+metadata:
+  name: mlflow
+spec:
+  addOwnerRef: true
+  componentKinds:
+  - group: core
+    kind: Service
+  - group: apps
+    kind: Deployment
+  - group: core
+    kind: ServiceAccount
+  descriptor:
+    description: MLflow is a service for model and data versioning tool
+    keywords:
+    - mlflow
+    links:
+    - description: About
+      url: ''
+    maintainers: []
+    owners: []
+    type: mlflow
+    version: v1alpha3
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: mlflow
+      app.kubernetes.io/instance: mlflow-1.8
+      app.kubernetes.io/managed-by: kfctl
+      app.kubernetes.io/name: mlflow
+      app.kubernetes.io/part-of: kubeflow
+      app.kubernetes.io/version: 1.8
